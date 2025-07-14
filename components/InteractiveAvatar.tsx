@@ -21,6 +21,15 @@ import { LoadingIcon } from "./Icons";
 import { MessageHistory } from "./AvatarSession/MessageHistory";
 
 import { AVATARS } from "@/app/lib/constants";
+// 🚀 TAMBAHKAN DI SINI - n8n Integration types
+interface N8nWebhookPayload {
+  sessionId: string;
+  candidateInfo: any;
+  avatarConfig: any;
+  n8nWebhookUrl: string;
+}
+
+const DEFAULT_CONFIG: StartAvatarRequest = {
 
 const DEFAULT_CONFIG: StartAvatarRequest = {
   quality: AvatarQuality.Low,
@@ -44,6 +53,13 @@ function InteractiveAvatar() {
   const { startVoiceChat } = useVoiceChat();
 
   const [config, setConfig] = useState<StartAvatarRequest>(DEFAULT_CONFIG);
+  // 🚀 TAMBAHKAN DI SINI - n8n states
+const [n8nWebhookUrl, setN8nWebhookUrl] = useState('');
+const [isN8nEnabled, setIsN8nEnabled] = useState(false);
+const [webhookStatus, setWebhookStatus] = useState('');
+const [currentSessionId, setCurrentSessionId] = useState('');
+
+const mediaStream = useRef<HTMLVideoElement>(null);
 
   const mediaStream = useRef<HTMLVideoElement>(null);
 
@@ -62,7 +78,52 @@ function InteractiveAvatar() {
       throw error;
     }
   }
+}
 
+  // 🚀 n8n webhook function
+  const triggerN8nWebhook = useMemoizedFn(async (sessionId: string, avatarConfig: any) => {
+    if (!isN8nEnabled || !n8nWebhookUrl) {
+      console.log('n8n integration disabled or webhook URL not set');
+      return;
+    }
+
+    try {
+      setWebhookStatus('🚀 Triggering n8n automation...');
+      
+      const webhookPayload: N8nWebhookPayload = {
+        sessionId,
+        candidateInfo: {
+          startTime: new Date().toISOString(),
+          browser: navigator.userAgent,
+          language: navigator.language,
+          platform: navigator.platform
+        },
+        avatarConfig,
+        n8nWebhookUrl
+      };
+
+      const response = await fetch('/api/webhook/interview-started', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(webhookPayload)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setWebhookStatus('✅ n8n automation started successfully!');
+        console.log('n8n webhook triggered:', result);
+      } else {
+        setWebhookStatus(`❌ Webhook failed: ${result.error}`);
+        console.error('Webhook failed:', result);
+      }
+    } catch (error) {
+      setWebhookStatus(`❌ Webhook error: ${error}`);
+      console.error('Error triggering webhook:', error);
+    }
+  });
   const startSessionV2 = useMemoizedFn(async (isVoiceChat: boolean) => {
     try {
       const newToken = await fetchAccessToken();
@@ -100,6 +161,12 @@ function InteractiveAvatar() {
       });
 
       await startAvatar(config);
+      // 🚀 Generate session ID and trigger n8n webhook
+const sessionId = `interview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+setCurrentSessionId(sessionId);
+
+// Trigger n8n webhook
+await triggerN8nWebhook(sessionId, config);
 
       if (isVoiceChat) {
         await startVoiceChat();
@@ -149,6 +216,45 @@ function InteractiveAvatar() {
           )}
         </div>
       </div>
+      </div>
+      
+      {/* n8n Automation Configuration */}
+      <div className="mb-4 p-4 border rounded-lg bg-gray-50">
+        <h3 className="text-lg font-medium mb-2">🤖 n8n Interview Automation</h3>
+        
+        <div className="flex items-center mb-2">
+          <input
+            type="checkbox"
+            id="n8n-enabled"
+            checked={isN8nEnabled}
+            onChange={(e) => setIsN8nEnabled(e.target.checked)}
+            className="mr-2"
+          />
+          <label htmlFor="n8n-enabled">Enable n8n Interview Automation</label>
+        </div>
+        
+        {isN8nEnabled && (
+          <div className="space-y-2">
+            <input
+              type="url"
+              placeholder="https://your-n8n-instance.com/webhook/interview-start"
+              value={n8nWebhookUrl}
+              onChange={(e) => setN8nWebhookUrl(e.target.value)}
+              className="w-full p-2 border rounded"
+            />
+            <p className="text-sm text-gray-600">
+              Enter your n8n webhook URL. When interview starts, n8n will automatically take control.
+            </p>
+            {webhookStatus && (
+              <div className="text-sm p-2 rounded bg-blue-50 border border-blue-200">
+                {webhookStatus}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {sessionState === StreamingAvatarSessionState.CONNECTED && (
       {sessionState === StreamingAvatarSessionState.CONNECTED && (
         <MessageHistory />
       )}
