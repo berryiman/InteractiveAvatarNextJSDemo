@@ -30,8 +30,6 @@ interface N8nWebhookPayload {
 }
 
 const DEFAULT_CONFIG: StartAvatarRequest = {
-
-const DEFAULT_CONFIG: StartAvatarRequest = {
   quality: AvatarQuality.Low,
   avatarName: AVATARS[0].avatar_id,
   knowledgeId: undefined,
