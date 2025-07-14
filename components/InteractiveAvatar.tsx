@@ -204,36 +204,26 @@ function InteractiveAvatar() {
         console.log("Avatar stopped talking", e);
       });
 
-      // CAPTURE AVATAR MESSAGES - dengan debugging
+      // CAPTURE AVATAR MESSAGES - FIXED
 avatar.on(StreamingEvents.AVATAR_TALKING_MESSAGE, (event) => {
-  console.log(">>>>> Avatar talking message FULL EVENT:", event);
-  console.log(">>>>> Event keys:", Object.keys(event));
-  console.log(">>>>> Event.detail:", event.detail);
-  console.log(">>>>> Event.data:", event.data);
-  
+  console.log(">>>>> Avatar talking message:", event.detail?.message);
   const message = {
     type: 'avatar',
-    text: event.message || event.detail?.message || event.data?.message || 'Avatar spoke (debugging...)',
+    text: event.detail?.message || 'Avatar spoke (message not captured)',
     timestamp: new Date().toISOString(),
-    sender: 'avatar',
-    rawEvent: event // simpan raw event untuk debug
+    sender: 'avatar'
   };
   setConversationData(prev => [...prev, message]);
 });
 
-      // CAPTURE USER MESSAGES - dengan debugging  
+      // CAPTURE USER MESSAGES - FIXED
 avatar.on(StreamingEvents.USER_TALKING_MESSAGE, (event) => {
-  console.log(">>>>> User talking message FULL EVENT:", event);
-  console.log(">>>>> Event keys:", Object.keys(event));
-  console.log(">>>>> Event.detail:", event.detail);
-  console.log(">>>>> Event.data:", event.data);
-  
+  console.log(">>>>> User talking message:", event.detail?.message);
   const message = {
     type: 'user',
-    text: event.message || event.detail?.message || event.data?.message || 'User spoke (debugging...)',
+    text: event.detail?.message || 'User spoke (message not captured)',
     timestamp: new Date().toISOString(),
-    sender: 'user',
-    rawEvent: event
+    sender: 'user'
   };
   setConversationData(prev => [...prev, message]);
 });
