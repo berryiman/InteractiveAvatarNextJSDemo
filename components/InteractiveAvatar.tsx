@@ -325,6 +325,18 @@ const endInterview = useMemoizedFn(async () => {
             <LoadingIcon />
           )}
         </div>
+        {/* BUTTON TEST - selalu muncul */}
+      <div className="mt-4 p-4 border border-green-600 rounded">
+        <h3 className="text-green-300 text-sm mb-2">🧪 Test Button (Always Visible)</h3>
+        <Button 
+          onClick={endInterview}
+          className="bg-green-600 hover:bg-green-700 text-white w-full"
+        >
+          🛑 Test End Interview
+        </Button>
+        <div className="text-xs text-gray-400 mt-2">
+          This button should always be visible for testing
+        </div>
       </div>
       
       {sessionState === StreamingAvatarSessionState.CONNECTED && isInterviewActive && (
