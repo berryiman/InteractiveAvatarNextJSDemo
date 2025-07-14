@@ -298,7 +298,7 @@ const response = await fetch(`${appBaseUrl}/api/webhook/interview-ended`, {
       mediaStream.current.onloadedmetadata = () => {
         mediaStream.current!.play();
       };
-    
+    }
   }, [mediaStream, stream]);
 
   return (
