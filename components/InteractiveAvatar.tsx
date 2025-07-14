@@ -149,6 +149,25 @@ function InteractiveAvatar() {
           )}
         </div>
       </div>
+      {sessionState === StreamingAvatarSessionState.CONNECTED && isInterviewActive && (
+        <div className="mt-4 p-4 border-t border-zinc-700">
+          <h3 className="text-lg font-medium mb-2 text-white">🎙️ Interview Controls</h3>
+          <div className="flex flex-col gap-2">
+            <div className="text-sm text-gray-300">
+              Session: {currentSessionId}
+            </div>
+            <div className="text-sm text-gray-300">
+              Messages captured: {conversationData.length}
+            </div>
+            <Button 
+              onClick={endInterview}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              🛑 End Interview & Send to n8n
+            </Button>
+          </div>
+        </div>
+      )}
       {sessionState === StreamingAvatarSessionState.CONNECTED && (
         <MessageHistory />
       )}
