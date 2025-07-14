@@ -21,7 +21,7 @@ import { LoadingIcon } from "./Icons";
 import { MessageHistory } from "./AvatarSession/MessageHistory";
 
 import { AVATARS } from "@/app/lib/constants";
-// 🚀 TAMBAHKAN DI SINI - n8n Integration types
+
 interface N8nWebhookPayload {
   sessionId: string;
   candidateInfo: any;
@@ -51,18 +51,18 @@ function InteractiveAvatar() {
   const { startVoiceChat } = useVoiceChat();
 
   const [config, setConfig] = useState<StartAvatarRequest>(DEFAULT_CONFIG);
+  const [currentSessionId, setCurrentSessionId] = useState('');
+  const [conversationData, setConversationData] = useState<any[]>([]);
+  const [interviewStartTime, setInterviewStartTime] = useState<string>('');
+  const [isInterviewActive, setIsInterviewActive] = useState(false);
 
-const [currentSessionId, setCurrentSessionId] = useState('');
-const [conversationData, setConversationData] = useState<any[]>([]);
-const [interviewStartTime, setInterviewStartTime] = useState<string>('');
-const [isInterviewActive, setIsInterviewActive] = useState(false);
   // DEBUG - untuk cek state
-useEffect(() => {
-  console.log('DEBUG - sessionState:', sessionState);
-  console.log('DEBUG - isInterviewActive:', isInterviewActive);
-}, [sessionState, isInterviewActive]);
+  useEffect(() => {
+    console.log('DEBUG - sessionState:', sessionState);
+    console.log('DEBUG - isInterviewActive:', isInterviewActive);
+  }, [sessionState, isInterviewActive]);
 
-const mediaStream = useRef<HTMLVideoElement>(null);
+  const mediaStream = useRef<HTMLVideoElement>(null);
 
   async function fetchAccessToken() {
     try {
@@ -70,9 +70,7 @@ const mediaStream = useRef<HTMLVideoElement>(null);
         method: "POST",
       });
       const token = await response.text();
-
-      console.log("Access Token:", token); // Log the token to verify
-
+      console.log("Access Token:", token);
       return token;
     } catch (error) {
       console.error("Error fetching access token:", error);
@@ -80,226 +78,224 @@ const mediaStream = useRef<HTMLVideoElement>(null);
     }
   }
 
-  // 🚀 n8n webhook function - automatic via environment variable
-const triggerN8nWebhook = useMemoizedFn(async (sessionId: string, avatarConfig: any) => {
-  // Check environment variable
-  const n8nWebhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
-  
-  if (!n8nWebhookUrl) {
-    console.log('NEXT_PUBLIC_N8N_WEBHOOK_URL not configured, skipping n8n automation');
-    return;
-  }
-
-  try {
-    console.log('🚀 Triggering n8n automation automatically...');
-    
-    const webhookPayload: N8nWebhookPayload = {
-      sessionId,
-      candidateInfo: {
-        startTime: new Date().toISOString(),
-        browser: navigator.userAgent,
-        language: navigator.language,
-        platform: navigator.platform
-      },
-      avatarConfig,
-      n8nWebhookUrl
-    };
-
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || '';
-const response = await fetch(`${appBaseUrl}/api/webhook/interview-started`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(webhookPayload)
-    });
-
-    const result = await response.json();
-    
-    if (result.success) {
-      console.log('✅ n8n automation started successfully!', result);
-    } else {
-      console.error('❌ n8n webhook failed:', result.error);
-    }
-  } catch (error) {
-    console.error('❌ n8n webhook error:', error);
-  }
-});
-  
-  const startSessionV2 = useMemoizedFn(async (isVoiceChat: boolean) => {
-  try {
-    const newToken = await fetchAccessToken();
-    const avatar = initAvatar(newToken);
-
-    // Set interview start time
-    setInterviewStartTime(new Date().toISOString());
-    setIsInterviewActive(true);
-    setConversationData([]); // Reset conversation
-
-    // AVATAR EVENTS - Track conversation
-    avatar.on(StreamingEvents.AVATAR_START_TALKING, (e) => {
-      console.log("Avatar started talking", e);
-    });
-    
-    avatar.on(StreamingEvents.AVATAR_STOP_TALKING, (e) => {
-      console.log("Avatar stopped talking", e);
-    });
-
-    // CAPTURE AVATAR MESSAGES
-    avatar.on(StreamingEvents.AVATAR_TALKING_MESSAGE, (event) => {
-      console.log(">>>>> Avatar talking message:", event);
-      const message = {
-        type: 'avatar',
-        text: event.message || 'Avatar spoke (message not captured)',
-        timestamp: new Date().toISOString(),
-        sender: 'avatar'
-      };
-      setConversationData(prev => [...prev, message]);
-    });
-
-    // CAPTURE USER MESSAGES  
-    avatar.on(StreamingEvents.USER_TALKING_MESSAGE, (event) => {
-      console.log(">>>>> User talking message:", event);
-      const message = {
-        type: 'user',
-        text: event.message || 'User spoke (message not captured)',
-        timestamp: new Date().toISOString(),
-        sender: 'user'
-      };
-      setConversationData(prev => [...prev, message]);
-    });
-
-    avatar.on(StreamingEvents.AVATAR_END_MESSAGE, (event) => {
-      console.log(">>>>> Avatar end message:", event);
-      if (event.message) {
-        const message = {
-          type: 'avatar',
-          text: event.message,
-          timestamp: new Date().toISOString(),
-          sender: 'avatar',
-          messageEnd: true
-        };
-        setConversationData(prev => [...prev, message]);
+  // MOVED OUTSIDE - endInterview function
+  const endInterview = useMemoizedFn(async () => {
+    try {
+      if (!currentSessionId) {
+        console.error('No active session to end');
+        return;
       }
-    });
-    // 3. ADD END INTERVIEW FUNCTION
 
-const endInterview = useMemoizedFn(async () => {
-  try {
-    if (!currentSessionId) {
-      console.error('No active session to end');
+      setIsInterviewActive(false);
+      
+      // Calculate duration
+      const endTime = new Date();
+      const startTime = new Date(interviewStartTime);
+      const durationMs = endTime.getTime() - startTime.getTime();
+      const durationMinutes = Math.round(durationMs / 60000 * 100) / 100;
+      const durationText = `${Math.floor(durationMinutes)} minutes ${Math.round((durationMinutes % 1) * 60)} seconds`;
+
+      console.log('Ending interview with conversation data:', conversationData);
+
+      // Send conversation to n8n webhook
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || '';
+      const response = await fetch(`${appBaseUrl}/api/webhook/interview-ended`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sessionId: currentSessionId,
+          conversationData: conversationData,
+          duration: durationText,
+          endReason: 'user_ended',
+          statistics: {
+            totalMessages: conversationData.length,
+            avatarMessages: conversationData.filter(msg => msg.type === 'avatar').length,
+            userMessages: conversationData.filter(msg => msg.type === 'user').length,
+            durationMinutes: durationMinutes
+          }
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ Interview ended successfully, sent to n8n:', result);
+        alert(`Interview ended successfully!\nDuration: ${durationText}\nMessages: ${conversationData.length}`);
+      } else {
+        console.error('❌ Failed to send interview data:', result.error);
+        alert(`Interview ended, but failed to send data: ${result.error}`);
+      }
+
+      // Stop avatar session
+      stopAvatar();
+      
+      // Reset states
+      setConversationData([]);
+      setCurrentSessionId('');
+      
+    } catch (error) {
+      console.error('Error ending interview:', error);
+      alert(`Error ending interview: ${error}`);
+    }
+  });
+
+  const triggerN8nWebhook = useMemoizedFn(async (sessionId: string, avatarConfig: any) => {
+    const n8nWebhookUrl = process.env.NEXT_PUBLIC_N8N_WEBHOOK_URL;
+    
+    if (!n8nWebhookUrl) {
+      console.log('NEXT_PUBLIC_N8N_WEBHOOK_URL not configured, skipping n8n automation');
       return;
     }
 
-    setIsInterviewActive(false);
-    
-    // Calculate duration
-    const endTime = new Date();
-    const startTime = new Date(interviewStartTime);
-    const durationMs = endTime.getTime() - startTime.getTime();
-    const durationMinutes = Math.round(durationMs / 60000 * 100) / 100;
-    const durationText = `${Math.floor(durationMinutes)} minutes ${Math.round((durationMinutes % 1) * 60)} seconds`;
+    try {
+      console.log('🚀 Triggering n8n automation automatically...');
+      
+      const webhookPayload: N8nWebhookPayload = {
+        sessionId,
+        candidateInfo: {
+          startTime: new Date().toISOString(),
+          browser: navigator.userAgent,
+          language: navigator.language,
+          platform: navigator.platform
+        },
+        avatarConfig,
+        n8nWebhookUrl
+      };
 
-    console.log('Ending interview with conversation data:', conversationData);
+      const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || '';
+      const response = await fetch(`${appBaseUrl}/api/webhook/interview-started`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(webhookPayload)
+      });
 
-    // Send conversation to n8n webhook
-    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || '';
-const response = await fetch(`${appBaseUrl}/api/webhook/interview-ended`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        sessionId: currentSessionId,
-        conversationData: conversationData,
-        duration: durationText,
-        endReason: 'user_ended',
-        statistics: {
-          totalMessages: conversationData.length,
-          avatarMessages: conversationData.filter(msg => msg.type === 'avatar').length,
-          userMessages: conversationData.filter(msg => msg.type === 'user').length,
-          durationMinutes: durationMinutes
-        }
-      })
-    });
-
-    const result = await response.json();
-    
-    if (result.success) {
-      console.log('✅ Interview ended successfully, sent to n8n:', result);
-      alert(`Interview ended successfully!\nDuration: ${durationText}\nMessages: ${conversationData.length}`);
-    } else {
-      console.error('❌ Failed to send interview data:', result.error);
-      alert(`Interview ended, but failed to send data: ${result.error}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        console.log('✅ n8n automation started successfully!', result);
+      } else {
+        console.error('❌ n8n webhook failed:', result.error);
+      }
+    } catch (error) {
+      console.error('❌ n8n webhook error:', error);
     }
+  });
+  
+  const startSessionV2 = useMemoizedFn(async (isVoiceChat: boolean) => {
+    try {
+      const newToken = await fetchAccessToken();
+      const avatar = initAvatar(newToken);
 
-    // Stop avatar session
-    stopAvatar();
-    
-    // Reset states
-    setConversationData([]);
-    setCurrentSessionId('');
-    
-  } catch (error) {
-    console.error('Error ending interview:', error);
-    alert(`Error ending interview: ${error}`);
-  }
-});
+      // Set interview start time
+      setInterviewStartTime(new Date().toISOString());
+      setIsInterviewActive(true);
+      setConversationData([]);
 
-    avatar.on(StreamingEvents.USER_END_MESSAGE, (event) => {
-      console.log(">>>>> User end message:", event);
-      if (event.message) {
+      // AVATAR EVENTS - Track conversation
+      avatar.on(StreamingEvents.AVATAR_START_TALKING, (e) => {
+        console.log("Avatar started talking", e);
+      });
+      
+      avatar.on(StreamingEvents.AVATAR_STOP_TALKING, (e) => {
+        console.log("Avatar stopped talking", e);
+      });
+
+      // CAPTURE AVATAR MESSAGES
+      avatar.on(StreamingEvents.AVATAR_TALKING_MESSAGE, (event) => {
+        console.log(">>>>> Avatar talking message:", event);
         const message = {
-          type: 'user', 
-          text: event.message,
+          type: 'avatar',
+          text: event.message || 'Avatar spoke (message not captured)',
           timestamp: new Date().toISOString(),
-          sender: 'user',
-          messageEnd: true
+          sender: 'avatar'
         };
         setConversationData(prev => [...prev, message]);
+      });
+
+      // CAPTURE USER MESSAGES  
+      avatar.on(StreamingEvents.USER_TALKING_MESSAGE, (event) => {
+        console.log(">>>>> User talking message:", event);
+        const message = {
+          type: 'user',
+          text: event.message || 'User spoke (message not captured)',
+          timestamp: new Date().toISOString(),
+          sender: 'user'
+        };
+        setConversationData(prev => [...prev, message]);
+      });
+
+      avatar.on(StreamingEvents.AVATAR_END_MESSAGE, (event) => {
+        console.log(">>>>> Avatar end message:", event);
+        if (event.message) {
+          const message = {
+            type: 'avatar',
+            text: event.message,
+            timestamp: new Date().toISOString(),
+            sender: 'avatar',
+            messageEnd: true
+          };
+          setConversationData(prev => [...prev, message]);
+        }
+      });
+
+      avatar.on(StreamingEvents.USER_END_MESSAGE, (event) => {
+        console.log(">>>>> User end message:", event);
+        if (event.message) {
+          const message = {
+            type: 'user', 
+            text: event.message,
+            timestamp: new Date().toISOString(),
+            sender: 'user',
+            messageEnd: true
+          };
+          setConversationData(prev => [...prev, message]);
+        }
+      });
+
+      // Rest of existing avatar setup...
+      avatar.on(StreamingEvents.STREAM_DISCONNECTED, () => {
+        console.log("Stream disconnected");
+        setIsInterviewActive(false);
+      });
+      
+      avatar.on(StreamingEvents.STREAM_READY, (event) => {
+        console.log(">>>>> Stream ready:", event.detail);
+      });
+
+      await startAvatar(config);
+
+      // Generate session ID and trigger n8n webhook
+      const sessionId = `interview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      setCurrentSessionId(sessionId);
+
+      // Trigger n8n webhook
+      await triggerN8nWebhook(sessionId, config);
+
+      if (isVoiceChat) {
+        await startVoiceChat();
       }
-    });
-
-    // Rest of existing avatar setup...
-    avatar.on(StreamingEvents.STREAM_DISCONNECTED, () => {
-      console.log("Stream disconnected");
+    } catch (error) {
+      console.error("Error starting avatar session:", error);
       setIsInterviewActive(false);
-    });
-    
-    avatar.on(StreamingEvents.STREAM_READY, (event) => {
-      console.log(">>>>> Stream ready:", event.detail);
-    });
-
-    await startAvatar(config);
-
-    // Generate session ID and trigger n8n webhook
-    const sessionId = `interview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setCurrentSessionId(sessionId);
-
-    // Trigger n8n webhook
-    await triggerN8nWebhook(sessionId, config);
-
-    if (isVoiceChat) {
-      await startVoiceChat();
     }
-  } catch (error) {
-    console.error("Error starting avatar session:", error);
-    setIsInterviewActive(false);
-  }
-});
+  });
 
   useUnmount(() => {
     stopAvatar();
   });
 
   useEffect(() => {
-  if (stream && mediaStream.current) {
-    mediaStream.current.srcObject = stream;
-    mediaStream.current.onloadedmetadata = () => {
-      mediaStream.current!.play();
-    };
-  }
-}, [mediaStream, stream]);
+    if (stream && mediaStream.current) {
+      mediaStream.current.srcObject = stream;
+      mediaStream.current.onloadedmetadata = () => {
+        mediaStream.current!.play();
+      };
+    }
+  }, [mediaStream, stream]);
 
   return (
     <div className="w-full flex flex-col gap-4">
@@ -327,7 +323,9 @@ const response = await fetch(`${appBaseUrl}/api/webhook/interview-ended`, {
             <LoadingIcon />
           )}
         </div>
-        {/* BUTTON TEST - selalu muncul */}
+      </div>
+      
+      {/* BUTTON TEST - selalu muncul */}
       <div className="mt-4 p-4 border border-green-600 rounded">
         <h3 className="text-green-300 text-sm mb-2">🧪 Test Button (Always Visible)</h3>
         <Button 
@@ -351,25 +349,17 @@ const response = await fetch(`${appBaseUrl}/api/webhook/interview-ended`, {
             <div className="text-sm text-gray-300">
               Messages captured: {conversationData.length}
             </div>
-            
-        </div>
-          <Button 
+            <Button 
               onClick={endInterview}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               🛑 End Interview & Send to n8n
             </Button>
           </div>
-      
+        </div>
       )}
 
       {sessionState === StreamingAvatarSessionState.CONNECTED && (
-        <MessageHistory />
-      )}
-      {/* n8n Automation Configuration */}
-
-      {sessionState === StreamingAvatarSessionState.CONNECTED && (
-
         <MessageHistory />
       )}
     </div>
