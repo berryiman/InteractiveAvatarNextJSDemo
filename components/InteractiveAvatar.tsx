@@ -203,7 +203,8 @@ const endInterview = useMemoizedFn(async () => {
     console.log('Ending interview with conversation data:', conversationData);
 
     // Send conversation to n8n webhook
-    const response = await fetch('/api/webhook/interview-ended', {
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || '';
+const response = await fetch(`${appBaseUrl}/api/webhook/interview-ended`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
