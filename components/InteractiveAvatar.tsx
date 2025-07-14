@@ -214,8 +214,6 @@ await triggerN8nWebhook(sessionId, config);
           )}
         </div>
       </div>
-      </div>
-      
       {/* n8n Automation Configuration */}
       <div className="mb-4 p-4 border rounded-lg bg-gray-50">
         <h3 className="text-lg font-medium mb-2">🤖 n8n Interview Automation</h3>
@@ -253,7 +251,7 @@ await triggerN8nWebhook(sessionId, config);
       </div>
 
       {sessionState === StreamingAvatarSessionState.CONNECTED && (
-      {sessionState === StreamingAvatarSessionState.CONNECTED && (
+
         <MessageHistory />
       )}
     </div>
