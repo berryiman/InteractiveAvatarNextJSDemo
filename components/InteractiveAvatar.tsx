@@ -293,13 +293,13 @@ const response = await fetch(`${appBaseUrl}/api/webhook/interview-ended`, {
   });
 
   useEffect(() => {
-    if (stream && mediaStream.current) {
-      mediaStream.current.srcObject = stream;
-      mediaStream.current.onloadedmetadata = () => {
-        mediaStream.current!.play();
-      };
-    }
-  }, [mediaStream, stream]);
+  if (stream && mediaStream.current) {
+    mediaStream.current.srcObject = stream;
+    mediaStream.current.onloadedmetadata = () => {
+      mediaStream.current!.play();
+    };
+  }
+}, [mediaStream, stream]);
 
   return (
     <div className="w-full flex flex-col gap-4">
