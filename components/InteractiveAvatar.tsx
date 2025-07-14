@@ -56,6 +56,11 @@ const [currentSessionId, setCurrentSessionId] = useState('');
 const [conversationData, setConversationData] = useState<any[]>([]);
 const [interviewStartTime, setInterviewStartTime] = useState<string>('');
 const [isInterviewActive, setIsInterviewActive] = useState(false);
+  // DEBUG - untuk cek state
+useEffect(() => {
+  console.log('DEBUG - sessionState:', sessionState);
+  console.log('DEBUG - isInterviewActive:', isInterviewActive);
+}, [sessionState, isInterviewActive]);
 
 const mediaStream = useRef<HTMLVideoElement>(null);
 
