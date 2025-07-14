@@ -59,8 +59,6 @@ const [currentSessionId, setCurrentSessionId] = useState('');
 
 const mediaStream = useRef<HTMLVideoElement>(null);
 
-  const mediaStream = useRef<HTMLVideoElement>(null);
-
   async function fetchAccessToken() {
     try {
       const response = await fetch("/api/get-access-token", {
@@ -76,7 +74,6 @@ const mediaStream = useRef<HTMLVideoElement>(null);
       throw error;
     }
   }
-}
 
   // 🚀 n8n webhook function
   const triggerN8nWebhook = useMemoizedFn(async (sessionId: string, avatarConfig: any) => {
