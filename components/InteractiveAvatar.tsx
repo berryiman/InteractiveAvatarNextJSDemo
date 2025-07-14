@@ -105,7 +105,8 @@ const triggerN8nWebhook = useMemoizedFn(async (sessionId: string, avatarConfig: 
       n8nWebhookUrl
     };
 
-    const response = await fetch('/api/webhook/interview-started', {
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_BASE_URL || '';
+const response = await fetch(`${appBaseUrl}/api/webhook/interview-started`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
