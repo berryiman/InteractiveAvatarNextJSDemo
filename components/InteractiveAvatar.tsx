@@ -337,14 +337,16 @@ const endInterview = useMemoizedFn(async () => {
             <div className="text-sm text-gray-300">
               Messages captured: {conversationData.length}
             </div>
-            <Button 
+            
+        </div>
+          <Button 
               onClick={endInterview}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
               🛑 End Interview & Send to n8n
             </Button>
           </div>
-        </div>
+      
       )}
 
       {sessionState === StreamingAvatarSessionState.CONNECTED && (
