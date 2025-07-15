@@ -204,16 +204,28 @@ function InteractiveAvatar() {
         console.log("Avatar stopped talking", e);
       });
 
-      // CAPTURE AVATAR MESSAGES - FIXED
+     // ACCUMULATE AVATAR MESSAGE - BARU
+let currentAvatarMessage = '';
+
 avatar.on(StreamingEvents.AVATAR_TALKING_MESSAGE, (event) => {
-  console.log(">>>>> Avatar talking message:", event.detail?.message);
-  const message = {
-    type: 'avatar',
-    text: event.detail?.message || 'Avatar spoke (message not captured)',
-    timestamp: new Date().toISOString(),
-    sender: 'avatar'
-  };
-  setConversationData(prev => [...prev, message]);
+  const newText = event.detail?.message || '';
+  currentAvatarMessage += (currentAvatarMessage ? ' ' : '') + newText;
+  console.log("Avatar building message:", currentAvatarMessage);
+});
+
+// SAVE COMPLETE AVATAR MESSAGE - BARU  
+avatar.on(StreamingEvents.AVATAR_END_MESSAGE, (event) => {
+  if (currentAvatarMessage.trim()) {
+    const message = {
+      type: 'avatar',
+      text: currentAvatarMessage.trim(),
+      timestamp: new Date().toISOString(),
+      sender: 'avatar'
+    };
+    setConversationData(prev => [...prev, message]);
+    console.log("✅ Complete avatar message saved:", currentAvatarMessage);
+    currentAvatarMessage = ''; // reset
+  }
 });
 
       // CAPTURE USER MESSAGES - FIXED
